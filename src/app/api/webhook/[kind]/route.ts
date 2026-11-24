@@ -22,7 +22,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ kind: string }
   const adapter = getAdapter(kind);
   if (!adapter) return NextResponse.json({ error: "kênh không hỗ trợ" }, { status: 404 });
   const raw = await req.text();
-  if (!adapter.verify(req.headers, raw)) return NextResponse.json({ error: "sai chữ ký" }, { status: 401 });
+  if (!adapter.verify(req.headers, raw)) {
+    // Hay gặp khi META_APP_SECRET ở máy chủ khác App Secret của ứng dụng đang gửi webhook: tin bị bỏ mà không ai biết
+    console.warn(`[webhook:${kind}] bỏ tin vì sai chữ ký${req.headers.get("x-hub-signature-256") ? "" : " (không có chữ ký)"}: kiểm META_APP_SECRET có đúng App Secret của ứng dụng Meta không`);
+    return NextResponse.json({ error: "sai chữ ký" }, { status: 401 });
+  }
   let payload: unknown;
   try {
     payload = JSON.parse(raw);
