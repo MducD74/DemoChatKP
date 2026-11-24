@@ -66,3 +66,10 @@ test("danh sách: status=active ẩn hội thoại đã xong; tìm kiếm qua da
   assert.deepEqual(found.map((i) => i.id), ["c:conv:u2"], "tìm thấy cả hội thoại đã xong");
   assert.match(found[0].snippet!, /Hải Châu/);
 });
+
+test("máy chủ không có ổ đĩa bền (KPCHAT_EPHEMERAL=1): cảnh báo thường trực cho quản trị", () => {
+  const out = buildAlerts({ channels: [], health: {}, webhook: { configured: false }, ephemeral: true });
+  assert.deepEqual(out.map((a) => [a.key, a.level]), [["ephemeral", "warn"]]);
+  assert.match(out[0].text, /nối lại Page/);
+  assert.deepEqual(buildAlerts({ channels: [], health: {}, webhook: { configured: false } }), []);
+});

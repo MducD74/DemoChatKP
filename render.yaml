@@ -1,0 +1,35 @@
+# Render Blueprint: KP Chat 2.0, GÓI FREE (chạy thử, chưa có sao lưu).
+# CẢNH BÁO: gói Free KHÔNG có ổ đĩa bền. Mỗi lần deploy hoặc máy chủ khởi động lại, toàn bộ data/ (kênh đã nối, token,
+# hội thoại, ảnh, chatbot) bị xoá. Máy tự tắt sau 15 phút không có truy cập: dùng dịch vụ ping ngoài gọi /api/health
+# mỗi 10 phút để giữ máy thức (xem docs/VAN-HANH.md, mục Render Free).
+# Lên gói trả phí: đổi plan, thêm khối disk (mountPath /app/data), bỏ KPCHAT_EPHEMERAL và KPCHAT_BACKUP.
+services:
+  - type: web
+    name: kp-chat
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: false # chỉ deploy khi bấm tay (không tự đẩy bản chưa duyệt)
+    envVars:
+      - key: KPCHAT_EPHEMERAL
+        value: "1"
+      - key: KPCHAT_BACKUP
+        value: "0"
+      # Bí mật: nhập trong Dashboard (sync: false), không ghi giá trị vào đây
+      - key: KPCHAT_SECRET_KEY
+        sync: false
+      - key: KPCHAT_ACCESS_KEY
+        sync: false
+      - key: KPCHAT_PUBLIC_URL
+        sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_VERIFY_TOKEN
+        sync: false
+      - key: META_LOGIN_CONFIG_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

@@ -12,8 +12,10 @@ export const ALERT_TTL_MS = 5 * 60_000;
 
 export const BACKUP_STALE_MS = 36 * 3600_000; // quá lâu không có bản sao lưu mới thì cảnh báo
 
-export function buildAlerts(input: { channels: Array<{ id: string; name: string; kind: string; off?: boolean }>; health: Record<string, ChannelHealth>; webhook: WebhookProbe; backup?: { lastAt?: number; error?: string; enabled: boolean }; now?: number }): OpsAlert[] {
+export function buildAlerts(input: { channels: Array<{ id: string; name: string; kind: string; off?: boolean }>; health: Record<string, ChannelHealth>; webhook: WebhookProbe; backup?: { lastAt?: number; error?: string; enabled: boolean }; ephemeral?: boolean; now?: number }): OpsAlert[] {
   const out: OpsAlert[] = [];
+  // Máy chủ không có ổ đĩa bền (Render gói Free): nhắc thường trực để không ai bất ngờ khi mất dữ liệu
+  if (input.ephemeral) out.push({ level: "warn", key: "ephemeral", text: "Bản chạy thử trên máy chủ không có ổ đĩa bền: mỗi lần deploy hoặc máy chủ khởi động lại, MỌI dữ liệu (kênh đã nối, hội thoại, ảnh, chatbot, tài liệu) bị xoá và phải nối lại Page. Không dùng cho khách thật." });
   const b = input.backup;
   if (b?.enabled) {
     if (b.error) out.push({ level: "error", key: "backup", text: `Sao lưu hằng ngày bị lỗi: ${b.error}. Xem nhật ký máy chủ dòng [sao-luu].` });
@@ -50,7 +52,7 @@ export async function collectAlerts(store: Store, env: Record<string, string | u
     const run = lastBackup();
     // Lỗi chỉ tính khi lần chạy gần nhất lỗi và chưa có bản tốt nào sau đó
     const backup = { enabled: env.NODE_ENV !== "test" && env.KPCHAT_BACKUP !== "0", lastAt: last?.at, error: run && !run.ok && run.at > (last?.at ?? 0) ? run.error : undefined };
-    return buildAlerts({ channels: Object.values(db.channels), health, webhook, backup });
+    return buildAlerts({ channels: Object.values(db.channels), health, webhook, backup, ephemeral: env.KPCHAT_EPHEMERAL === "1" });
   })();
   g.__kpAlerts = { at: c?.at ?? 0, alerts: c?.alerts ?? [], running };
   try {

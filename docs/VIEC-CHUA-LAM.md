@@ -6,6 +6,11 @@ Cập nhật 24/11/2026. Xếp theo mục của tài liệu yêu cầu công vi�
 - **1.1 Tên miền HTTPS cố định**: đã chuẩn bị `Dockerfile`, `railway.json`, `/api/health` và tài liệu `docs/VAN-HANH.md`. Còn thiếu máy chủ Railway và bản ghi DNS (công ty cấp).
 - **1.2 Đăng nhập bằng tài khoản KP Xuxi**: thiết kế ở `docs/CAI-DAT-CHO-HE-THONG-KP.md` mục 3. Hiện dùng khóa truy cập chung và ô chọn vai trò thử.
 
+## Đang chạy thử trên Render gói Free (quyết định 24/11/2026)
+- Dữ liệu **không bền**: mất khi deploy hoặc khởi động lại; cần ping `/api/health` để máy không tự tắt (`docs/VAN-HANH.md` mục 1b).
+- **Sao lưu tạm bỏ qua** (`KPCHAT_BACKUP=0`). Mã sao lưu và khôi phục vẫn giữ, có test, bật lại khi lên gói có ổ đĩa.
+- Do đó **chưa nghiệm thu được** mục 2.4 (không mất tin khi khởi động lại) và 6.1 (sao lưu) trên bản online.
+
 ## Chờ công ty cung cấp (xem `docs/KE-HOACH-XUXI.md` mục 3)
 - Page Facebook thử, vai trò trên ứng dụng Meta: để thử lại 2.1, 2.2, 2.3 với Page thật. Chức năng đã chạy với Page thật ngày 21-22/11; cần chạy lại trên Page thử do công ty cấp.
 - OA Zalo thử: các bước ở `docs/ZALO-OA-CAC-BUOC.md`.

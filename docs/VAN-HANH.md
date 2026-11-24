@@ -8,7 +8,24 @@ Dành cho người chạy và trông KP Chat trên máy chủ. Cập nhật 24/1
 - **Ổ đĩa bền** (Railway Volume) gắn vào `/app/data`. Trong đó có: `chat.json` (toàn bộ dữ liệu), `media/` (ảnh), `backups/` (bản sao lưu).
 - Ghi dữ liệu an toàn: ghi tệp tạm, `fsync`, rồi đổi tên. Máy chủ tắt giữa chừng thì vẫn còn bản cũ hoặc bản mới nguyên vẹn. Webhook chỉ trả 200 cho Meta **sau khi** tin đã nằm trên đĩa, nên máy chủ tắt đột ngột thì Meta gửi lại tin; tin trùng bị chặn theo mã tin.
 
-## 2. Đưa lên Railway lần đầu
+## 1b. Đang dùng: Render gói Free (chạy thử, quyết định 24/11/2026)
+Cấu hình trong `render.yaml`. Đặc điểm của gói Free (theo tài liệu Render):
+- **Không có ổ đĩa bền.** Mỗi lần deploy hoặc khởi động lại, toàn bộ `data/` bị xóa: kênh đã nối, token, hội thoại, ảnh, chatbot, tài liệu kiến thức, khóa AI nhập ở Cài đặt. Phải nối lại Page và nhập lại tài liệu. Quản trị luôn thấy cảnh báo này ở đầu trang (`KPCHAT_EPHEMERAL=1`).
+- **Tự tắt sau 15 phút không có truy cập**, bật lại mất khoảng 1 phút. Khi máy tắt rồi bật thì dữ liệu cũng mất. Vì vậy **bắt buộc** có dịch vụ ping ngoài, ví dụ UptimeRobot gói miễn phí: kiểu HTTP(s), địa chỉ `https://<tên dịch vụ>.onrender.com/api/health` (hoặc tên miền riêng), mỗi 5 phút. `/api/health` không cần khóa truy cập và không trả dữ liệu nào.
+- Gói Free có 750 giờ máy mỗi tháng, đủ để một dịch vụ chạy cả tháng. Chạy dịch vụ thứ hai thì không đủ.
+- **Sao lưu tắt** (`KPCHAT_BACKUP=0`): không có ổ đĩa bền thì sao lưu cũng mất theo.
+- Deploy để `autoDeploy: false`: chỉ deploy khi bấm tay. Mỗi lần deploy là mất dữ liệu, nên chọn lúc không thử nghiệm.
+- Render tự cấp địa chỉ `https://<tên>.onrender.com`. **Chưa xác minh** hộp đăng nhập Facebook có nhận miền `onrender.com` không: trước đây Meta từ chối `trycloudflare.com`. Nếu bị từ chối, gắn tên miền riêng (Custom Domain, CNAME ở Tenten); gói Free có hỗ trợ.
+- Biến môi trường: như bảng ở mục 2 (nhập ở Render > Environment). Không cần biến về sao lưu.
+
+**Lên gói trả phí khi cần giữ dữ liệu** (bắt buộc trước khi nghiệm thu mục 2.4 và 6.1):
+1. Đổi `plan` sang gói trả phí.
+2. Thêm khối `disk` với `mountPath: /app/data`.
+3. Xóa hai biến `KPCHAT_EPHEMERAL` và `KPCHAT_BACKUP`.
+
+Khi đó có thêm ảnh chụp ổ đĩa tự động mỗi 24 giờ, giữ 7 ngày, và deploy sẽ ngừng vài giây (không mất tin, vì Meta gửi lại webhook).
+
+## 2. Đưa lên Railway lần đầu (khi chuyển sang Railway)
 1. Tạo service từ repo, Railway đọc `railway.json` và build bằng `Dockerfile`. Bước build **chạy toàn bộ test**; test hỏng thì không ra bản mới.
 2. Thêm **Volume** gắn vào đường dẫn `/app/data`.
 3. Đặt biến môi trường (Settings > Variables). **Không** ghi các giá trị này vào mã hay tài liệu:
