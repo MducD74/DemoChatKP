@@ -447,6 +447,9 @@ export default function ChatPane({ onUnread, onNeed, openId, onOpened, goChannel
               <div className="kc-empty">
                 {channels.length === 0
                   ? admin ? <>Chưa có kênh nào. <button className="kc-link" onClick={goChannels}>Thêm kênh để nhận tin</button>.</> : "Chưa có kênh nào. Nhờ quản trị thêm kênh."
+                  : items.length === 0 && fStatus !== "all" && !qq
+                    // Máy chủ đã lọc theo trạng thái: hội thoại tải từ tin cũ là "Đã xong" nên không hiện ở "Đang xử lý"
+                    ? <>Không có hội thoại {fStatus === "open" ? "đang xử lý" : "đã xong"}. <button className="kc-link" onClick={() => setFStatus("all")}>Xem tất cả hội thoại</button> (hội thoại tải từ tin cũ nằm ở mục Đã xong).</>
                   : items.length === 0 ? "Chưa có hội thoại nào. Tin khách nhắn tới sẽ hiện ở đây."
                   : "Không có hội thoại nào khớp bộ lọc."}
                 {channels.length === 0 && admin && <><br /><br /><button className="btn" onClick={async () => { await api("/api/dev/seed", "POST"); loadList(); loadTemplates(); }}>Nạp dữ liệu mẫu</button></>}
