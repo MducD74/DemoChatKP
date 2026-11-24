@@ -46,7 +46,7 @@ test("sức khoẻ: Page chưa đăng ký app, và Meta lỗi mạng", async () 
   }) as unknown as typeof fetch;
   const h = await checkMetaHealth(s, { appId: "APP", fetchImpl: f });
   assert.equal(h.a.subscribed, false);
-  assert.deepEqual(h.b, { ok: false, error: "mất mạng" });
+  assert.deepEqual(h.b, { ok: true, transient: true, error: "mất mạng" }, "lỗi mạng: chưa kết luận token hỏng");
 });
 
 test("đổi tên kênh: kiểm tên rỗng, quá dài và kênh không có", async () => {
@@ -62,4 +62,50 @@ test("đăng nhập Facebook: chỉ thêm auth_type=rerequest khi yêu cầu ch�
   const base = { appId: "1", appSecret: "s", redirectUri: "http://localhost:3031/cb", configId: "CFG" };
   assert.equal(new URL(metaLoginUrl(base, "st")).searchParams.has("auth_type"), false);
   assert.equal(new URL(metaLoginUrl({ ...base, rerequest: true }, "st")).searchParams.get("auth_type"), "rerequest");
+});
+
+test("sức khoẻ có khóa ứng dụng: dùng debug_token; thiếu pages_read_engagement KHÔNG phải token hỏng (lỗi #100 của /me)", async () => {
+  const s = memStore([mk("a"), mk("b"), mk("c"), mk("d")]);
+  const st = staticTokens(s);
+  await st.save("a", "OK"); await st.save("b", "THIEU_RE"); await st.save("c", "HONG"); await st.save("d", "KO_NHAN_TIN");
+  const calls: string[] = [];
+  const all = ["pages_messaging", "pages_read_engagement", "pages_manage_metadata", "pages_show_list"];
+  const f = (async (url: string, init: RequestInit) => {
+    calls.push(url);
+    const auth = (init.headers as Record<string, string>).authorization;
+    if (url.includes("/debug_token")) {
+      assert.equal(auth, "Bearer APP|SECRET", "debug_token gọi bằng token ứng dụng");
+      const t = new URL(url).searchParams.get("input_token");
+      const data = t === "HONG" ? { is_valid: false, error: { message: "Session has expired" } }
+        : t === "THIEU_RE" ? { is_valid: true, scopes: all.filter((x) => x !== "pages_read_engagement") }
+        : t === "KO_NHAN_TIN" ? { is_valid: true, scopes: ["pages_show_list"] }
+        : { is_valid: true, scopes: all };
+      return new Response(JSON.stringify({ data }), { status: 200 });
+    }
+    if (url.includes("/subscribed_apps")) return new Response(JSON.stringify({ data: [{ id: "APP" }] }), { status: 200 });
+    // /me với token thiếu quyền trả lỗi #100 như Meta thật: không được dùng để kết luận
+    return new Response(JSON.stringify({ error: { code: 100, message: "requires the 'pages_read_engagement' permission" } }), { status: 400 });
+  }) as unknown as typeof fetch;
+  const h = await checkMetaHealth(s, { appId: "APP", appSecret: "SECRET", fetchImpl: f });
+  assert.deepEqual(h.a, { ok: true, subscribed: true });
+  assert.deepEqual(h.b, { ok: true, subscribed: true, missing: ["pages_read_engagement"] });
+  assert.equal(h.c.ok, false);
+  assert.match(h.c.error!, /hết hạn hoặc bị thu hồi.*Session has expired/);
+  assert.equal(h.d.ok, false);
+  assert.match(h.d.error!, /thiếu quyền pages_messaging/);
+  assert.ok(!calls.some((u) => u.includes("/me?")), "không gọi /me khi có khóa ứng dụng");
+});
+
+test("không có khóa ứng dụng: /me lỗi #100 (thiếu quyền) không bị coi là token hỏng; chỉ #190 mới hỏng", async () => {
+  const s = memStore([mk("a"), mk("b")]);
+  await staticTokens(s).save("a", "A"); await staticTokens(s).save("b", "B");
+  const f = (async (url: string, init: RequestInit) => {
+    const tok = (init.headers as Record<string, string>).authorization;
+    const code = tok.endsWith("A") ? 100 : 190;
+    return new Response(JSON.stringify({ error: { code, message: "x" } }), { status: 400 });
+  }) as unknown as typeof fetch;
+  const h = await checkMetaHealth(s, { fetchImpl: f });
+  assert.equal(h.a.ok, true);
+  assert.equal(h.a.transient, true);
+  assert.deepEqual(h.b, { ok: false, error: "Token hết hạn hoặc bị thu hồi" });
 });

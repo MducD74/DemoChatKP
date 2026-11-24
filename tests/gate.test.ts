@@ -15,6 +15,12 @@ test("công khai mà chưa có khóa truy cập hoặc khóa quá ngắn: chặn
   assert.deepEqual(gate({ pathname: "/api/inbox", env: { ...env, KPCHAT_ACCESS_KEY: "ngan" } }).action, "deny");
   assert.equal((gate({ pathname: "/", env }) as { status: number }).status, 503);
   assert.equal(gate({ pathname: "/api/webhook/facebook", env }).action, "allow");
+  // Báo rõ thiếu hay quá ngắn (kể cả biến rỗng), không lộ giá trị khóa
+  assert.match((gate({ pathname: "/", env: { ...env, KPCHAT_ACCESS_KEY: "" } }) as { message: string }).message, /không thấy biến môi trường KPCHAT_ACCESS_KEY/);
+  const short = gate({ pathname: "/", env: { ...env, KPCHAT_ACCESS_KEY: "bimat123" } }) as { message: string };
+  assert.match(short.message, /đọc được 8 ký tự, cần tối thiểu 16/);
+  assert.ok(!short.message.includes("bimat123"));
+  assert.equal(gate({ pathname: "/api/health", env }).action, "allow", "kiểm tra sống không cần khóa");
 });
 
 test("công khai: không có khóa thì 401; khóa đúng trong cookie thì vào; khóa trên địa chỉ thì đặt cookie rồi chuyển hướng; khóa sai bị chặn", () => {

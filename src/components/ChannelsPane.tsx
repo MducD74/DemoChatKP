@@ -393,7 +393,7 @@ function ZaloGroupsStep({ c, onFlash }: { c: ChannelView; onFlash: (r: { ok?: bo
 
 // Chi tiết một Page Messenger hoặc tài khoản Instagram nối bằng đăng nhập Facebook.
 function MetaChannelModal({ c, health, onClose, onChange, onFlash, onToggle, onRemove, onReconnect, onCheck, onUrls }: {
-  c: ChannelView; health?: { ok: boolean; error?: string; subscribed?: boolean }; onClose: () => void; onChange: () => void;
+  c: ChannelView; health?: { ok: boolean; error?: string; subscribed?: boolean; missing?: string[] }; onClose: () => void; onChange: () => void;
   onFlash: (r: { ok?: boolean; error?: string }, text: string) => void; onToggle: () => void; onRemove: () => void; onReconnect: () => void;
   onCheck: () => void; onUrls: () => void;
 }) {
@@ -425,6 +425,12 @@ function MetaChannelModal({ c, health, onClose, onChange, onFlash, onToggle, onR
       footer={<><button type="button" className="btn" onClick={onRemove}><Ic n="trash" /> Gỡ kết nối</button><span className="sp" /><button type="button" className="btn p" onClick={onClose}>Đóng</button></>}>
       <div className="mb">
         <div className="kv" style={{ marginBottom: 10 }}>{KIND[c.kind]} · Mã {c.externalId}{c.pageId ? ` · Page ${c.pageId}` : ""}</div>
+        {!bad && !!health?.missing?.length && (
+          <p style={{ margin: "0 0 10px", fontSize: 12.5, color: "var(--warn)" }}>
+            Token thiếu quyền {health.missing.join(", ")}. Vẫn nhắn tin được, nhưng {health.missing.includes("pages_read_engagement") ? "không lấy được tên, ảnh khách và không tải được tin cũ" : "thiếu một số tính năng"}.
+            Thêm quyền vào cấu hình Facebook Login for Business (App Dashboard), rồi bấm &quot;Kết nối lại bằng Facebook&quot; và chấp nhận đủ quyền.
+          </p>
+        )}
         <ol className="kc-stepl">
           {steps.map((s, i) => (
             <li key={i} className={s.done ? "done" : i === firstOpen ? "now" : ""}>

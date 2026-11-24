@@ -189,7 +189,17 @@ export function tiktokAuthUrl(portalUrl: string, state: string) {
 }
 
 // ---------- Meta ----------
-export async function verifyMetaToken(token: string, expectedId: string, fetchImpl: typeof fetch = fetch) {
+// Kiểm token Page dán tay: còn hiệu lực và đúng Page. Có khóa ứng dụng thì dùng debug_token (không đòi quyền trên Page);
+// không có thì dùng /me (đòi quyền pages_read_engagement).
+export async function verifyMetaToken(token: string, expectedId: string, fetchImpl: typeof fetch = fetch, app?: { appId?: string; appSecret?: string }) {
+  if (app?.appId && app.appSecret) {
+    const r = await fetchImpl(`${GRAPH}/debug_token?${new URLSearchParams({ input_token: token })}`, { headers: { authorization: `Bearer ${app.appId}|${app.appSecret}` } });
+    const j = (await r.json().catch(() => ({}))) as { data?: { is_valid?: boolean; profile_id?: string; error?: { message?: string } }; error?: { message?: string } };
+    if (!r.ok || !j.data) return { ok: false as const, error: `Không kiểm được token: ${j.error?.message ?? r.status}` };
+    if (!j.data.is_valid) return { ok: false as const, error: `Meta từ chối token: ${j.data.error?.message ?? "token không còn hiệu lực"}` };
+    if (j.data.profile_id && j.data.profile_id !== expectedId) return { ok: false as const, error: `Token thuộc Page ${j.data.profile_id}, không khớp ${expectedId}` };
+    return { ok: true as const };
+  }
   const r = await fetchImpl(`${GRAPH}/me?fields=id,name`, { headers: { authorization: `Bearer ${token}` } });
   const j = (await r.json().catch(() => ({}))) as { id?: string; name?: string; error?: { message?: string } };
   if (!r.ok || !j.id) return { ok: false as const, error: `Meta từ chối token: ${j.error?.message ?? r.status}` };

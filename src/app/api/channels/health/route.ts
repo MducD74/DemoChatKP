@@ -9,5 +9,5 @@ export async function GET(req: Request) {
   boot();
   const a = adminOnly(req);
   if (a instanceof NextResponse) return a;
-  return NextResponse.json({ health: await checkMetaHealth(store, { appId: process.env.META_APP_ID }) });
+  return NextResponse.json({ health: await checkMetaHealth(store, { appId: process.env.META_APP_ID, appSecret: process.env.META_APP_SECRET }) });
 }

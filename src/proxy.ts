@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { gate } from "./gate";
+import { browserOrigin } from "./core/origin";
 
 export function proxy(req: NextRequest) {
   const url = req.nextUrl;
@@ -11,8 +12,11 @@ export function proxy(req: NextRequest) {
   });
   if (g.action === "allow") return NextResponse.next();
   if (g.action === "deny") return new NextResponse(g.message, { status: g.status, headers: { "content-type": "text/plain; charset=utf-8" } });
-  const res = NextResponse.redirect(new URL(g.redirect + (url.search ? url.search.replace(/[?&]key=[^&]*/g, "").replace(/^&/, "?") : ""), url));
-  res.cookies.set("kp_key", g.key, { httpOnly: true, sameSite: "lax", secure: url.protocol === "https:", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  // Chuyển hướng về đúng tên miền trình duyệt đang mở (header Host): sau proxy (Render), url có thể mang địa chỉ nội bộ
+  const rest = new URLSearchParams(url.search);
+  rest.delete("key");
+  const res = NextResponse.redirect(`${browserOrigin(req.headers, req.url).origin}${g.redirect}${rest.size ? `?${rest}` : ""}`, 307);
+  res.cookies.set("kp_key", g.key, { httpOnly: true, sameSite: "lax", secure: url.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https", path: "/", maxAge: 60 * 60 * 24 * 30 });
   return res;
 }
 

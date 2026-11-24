@@ -2,7 +2,7 @@
 // webhook không truy cập được từ Internet. Kết quả lưu đệm vài phút để nhiều người mở trang cùng lúc không gọi Meta liên tục.
 // Có kiểm tra định kỳ ở máy chủ (ghi nhật ký dòng [canh-bao]) để thấy được cả khi không ai mở trang.
 import type { Store } from "./store";
-import { checkMetaHealth, type ChannelHealth } from "./metahealth";
+import { checkMetaHealth, missingNote, type ChannelHealth } from "./metahealth";
 import { probeWebhook, type WebhookProbe } from "./webhookstate";
 import { defaultPaths, lastBackup, listBackups } from "./backup";
 
@@ -30,7 +30,8 @@ export function buildAlerts(input: { channels: Array<{ id: string; name: string;
     const h = input.health[c.id];
     if (!h) continue;
     if (!h.ok) out.push({ level: "error", key: `token:${c.id}`, channelId: c.id, text: `Kênh "${c.name}": ${h.error ?? "token không dùng được"}. Vào Cài đặt > Kênh, bấm "Kết nối lại" (đăng nhập Facebook bằng tài khoản quản trị Page).` });
-    else if (h.subscribed === false) out.push({ level: "warn", key: `sub:${c.id}`, channelId: c.id, text: `Page "${c.name}" chưa đăng ký nhận tin về KP Chat: tin mới sẽ không về. Vào Cài đặt > Kênh > chi tiết Page, bước "Đăng ký nhận tin".` });
+    else if (h.missing?.length) out.push({ level: "warn", key: `scope:${c.id}`, channelId: c.id, text: `Kênh "${c.name}" thiếu quyền ${h.missing.map((m) => `${m} (${missingNote(m)})`).join(", ")}. Vẫn nhắn tin được. Thêm quyền vào cấu hình Facebook Login for Business, rồi Cài đặt > Kênh > "Kết nối lại" và chấp nhận đủ quyền.` });
+    if (h.ok && h.subscribed === false) out.push({ level: "warn", key: `sub:${c.id}`, channelId: c.id, text: `Page "${c.name}" chưa đăng ký nhận tin về KP Chat: tin mới sẽ không về. Vào Cài đặt > Kênh > chi tiết Page, bước "Đăng ký nhận tin".` });
   }
   return out;
 }
@@ -44,7 +45,7 @@ export async function collectAlerts(store: Store, env: Record<string, string | u
   if (c?.running) return c.running;
   const running = (async () => {
     const [health, webhook, db] = await Promise.all([
-      checkMetaHealth(store, { appId: env.META_APP_ID }).catch(() => ({})),
+      checkMetaHealth(store, { appId: env.META_APP_ID, appSecret: env.META_APP_SECRET }).catch(() => ({})),
       probeWebhook({ KPCHAT_PUBLIC_URL: env.KPCHAT_PUBLIC_URL, META_VERIFY_TOKEN: env.META_VERIFY_TOKEN }).catch((): WebhookProbe => ({ configured: false })),
       store.load(),
     ]);

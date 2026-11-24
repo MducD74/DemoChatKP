@@ -23,7 +23,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   const token = body.token?.trim();
   if (!token) return NextResponse.json({ ok: false, error: "Thiếu token" }, { status: 400 });
-  const v = await verifyMetaToken(token, pageId);
+  const v = await verifyMetaToken(token, pageId, fetch, { appId: process.env.META_APP_ID, appSecret: process.env.META_APP_SECRET });
   if (!v.ok) return NextResponse.json(v, { status: 400 });
   await st.save(id, token);
   return NextResponse.json({ ok: true, name: v.name });

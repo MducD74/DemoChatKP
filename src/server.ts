@@ -7,6 +7,7 @@ import { startBackupSchedule } from "@/core/backup";
 import { initAdapters } from "@/adapters";
 import { initChatbot } from "@/core/botauto";
 import { getAdapter } from "@/core/adapter";
+import { loginBaseOf, publicBase } from "@/core/origin";
 import type { createZaloAdapter } from "@/adapters/zalo";
 import type { createTikTokAdapter } from "@/adapters/tiktok";
 
@@ -29,14 +30,10 @@ export const zaloAdapter = () => getAdapter("zalo_oa") as ReturnType<typeof crea
 export const tiktokAdapter = () => getAdapter("tiktok") as ReturnType<typeof createTikTokAdapter> | undefined;
 
 // Địa chỉ công khai của app (Zalo, TikTok, Meta cần HTTPS công khai để gọi webhook và chuyển hướng cấp quyền).
-export const baseUrl = (req: Request) => (process.env.KPCHAT_PUBLIC_URL ?? new URL(req.url).origin).replace(/\/$/, "");
-
-// Đăng nhập bằng trình duyệt chỉ là trình duyệt đi qua nhà cung cấp rồi quay lại, không cần đường hầm. Mở từ localhost thì quay về localhost
-// (Meta cho phép localhost khi ứng dụng ở chế độ phát triển). Mở từ địa chỉ công khai thì dùng địa chỉ công khai như cũ.
-export const loginBase = (req: Request) => {
-  const u = new URL(req.url);
-  return ["localhost", "127.0.0.1"].includes(u.hostname) ? u.origin : baseUrl(req);
-};
+// Đọc theo địa chỉ trình duyệt đang dùng (header Host), không theo req.url: sau proxy của Render, req.url có thể là localhost nội bộ.
+export const baseUrl = (req: Request) => publicBase(req.headers, req.url, process.env.KPCHAT_PUBLIC_URL);
+// Đăng nhập Facebook quay về: localhost nếu đang mở từ chính máy, còn lại là địa chỉ công khai (xem core/origin.ts)
+export const loginBase = (req: Request) => loginBaseOf(req.headers, req.url, process.env.KPCHAT_PUBLIC_URL);
 
 import { NextResponse } from "next/server";
 import { actorFromCookie, type Actor } from "@/core/staff";

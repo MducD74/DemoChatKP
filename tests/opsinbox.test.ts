@@ -73,3 +73,11 @@ test("máy chủ không có ổ đĩa bền (KPCHAT_EPHEMERAL=1): cảnh báo th
   assert.match(out[0].text, /nối lại Page/);
   assert.deepEqual(buildAlerts({ channels: [], health: {}, webhook: { configured: false } }), []);
 });
+
+test("cảnh báo: token thiếu quyền là chú ý (không phải lỗi), lỗi mạng tạm thời không báo token hỏng", () => {
+  const channels = [{ id: "a", name: "Page thử", kind: "facebook" }];
+  const out = buildAlerts({ channels, health: { a: { ok: true, subscribed: true, missing: ["pages_read_engagement"] } }, webhook: { configured: false } });
+  assert.deepEqual(out.map((a) => [a.key, a.level]), [["scope:a", "warn"]]);
+  assert.match(out[0].text, /Vẫn nhắn tin được/);
+  assert.deepEqual(buildAlerts({ channels, health: { a: { ok: true, transient: true, error: "mất mạng" } }, webhook: { configured: false } }), []);
+});

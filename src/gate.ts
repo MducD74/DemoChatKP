@@ -13,7 +13,9 @@ export function gate(input: { pathname: string; queryKey?: string | null; cookie
   if (!env.KPCHAT_PUBLIC_URL) return { action: "allow" }; // chỉ chạy trên máy: không cần cổng
   if (PUBLIC.some((r) => r.test(pathname))) return { action: "allow" };
   const key = env.KPCHAT_ACCESS_KEY;
-  if (!key || key.length < 16) return { action: "deny", status: 503, message: "KP Chat đang mở ra Internet nhưng chưa đặt KPCHAT_ACCESS_KEY (tối thiểu 16 ký tự). Đặt khóa trong .env.local rồi khởi động lại." };
+  // Hai trường hợp báo riêng để dễ sửa; không bao giờ in giá trị khóa
+  if (!key) return { action: "deny", status: 503, message: "KP Chat đang mở ra Internet nhưng máy chủ không thấy biến môi trường KPCHAT_ACCESS_KEY (hoặc biến đang rỗng). Đặt biến này ở nơi chạy máy chủ (Render: Environment; trên máy: .env.local) rồi deploy hoặc khởi động lại." };
+  if (key.length < 16) return { action: "deny", status: 503, message: `KPCHAT_ACCESS_KEY quá ngắn: máy chủ đọc được ${key.length} ký tự, cần tối thiểu 16. Đổi khóa dài hơn rồi deploy hoặc khởi động lại.` };
   if (cookieKey && safeEq(cookieKey, key)) return { action: "allow" };
   if (queryKey && safeEq(queryKey, key)) return { action: "setcookie", key, redirect: pathname };
   return { action: "deny", status: 401, message: "Cần khóa truy cập. Mở địa chỉ kèm ?key=... (khóa nằm trong .env.local của máy chủ)." };

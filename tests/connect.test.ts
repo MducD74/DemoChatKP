@@ -119,3 +119,15 @@ test("TikTok: đăng ký webhook cấp ứng dụng với DIRECT_MESSAGE", async
   const bad = await subscribeTikTokWebhook({ clientKey: "K", clientSecret: "S", callbackUrl: "u" }, fakeFetch({ code: 40001, message: "bad" }).f);
   assert.equal(bad.ok, false);
 });
+
+test("token dán tay: có khóa ứng dụng thì kiểm bằng debug_token (không đòi pages_read_engagement), kiểm đúng Page", async () => {
+  const f = (async (url: string) => {
+    const t = new URL(url).searchParams.get("input_token");
+    const data = t === "HONG" ? { is_valid: false } : { is_valid: true, profile_id: "P1" };
+    return new Response(JSON.stringify({ data }), { status: 200 });
+  }) as unknown as typeof fetch;
+  const app = { appId: "APP", appSecret: "S" };
+  assert.deepEqual(await verifyMetaToken("T", "P1", f, app), { ok: true });
+  assert.match((await verifyMetaToken("T", "P2", f, app) as { error: string }).error, /không khớp/);
+  assert.equal((await verifyMetaToken("HONG", "P1", f, app)).ok, false);
+});
