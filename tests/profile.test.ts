@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createMetaAdapter } from "../src/adapters/meta";
 import { registerAdapter } from "../src/core/adapter";
 import { ingest } from "../src/core/ingest";
-import { enrichProfiles } from "../src/core/profile";
+import { enrichProfiles, refreshProfile } from "../src/core/profile";
 import type { DB, Store } from "../src/core/store";
 import type { Channel } from "../src/core/types";
 
@@ -44,12 +44,31 @@ test("fetchProfile: Instagram dùng username khi không có tên", async () => {
   assert.match(urls[0], /fields=name,username,profile_pic/);
 });
 
-test("fetchProfile: lỗi Meta, không token hoặc không có dữ liệu thì trả null", async () => {
-  reply = { status: 400, body: { error: { message: "x" } } };
-  assert.equal(await mk().fetchProfile!(channel, "U1"), null);
+test("fetchProfile: lỗi Meta, không token hoặc không có dữ liệu thì không có tên và ảnh, kèm lý do", async () => {
+  reply = { status: 400, body: { error: { message: "x", code: 100 } } };
+  const e = await mk().fetchProfile!(channel, "U1");
+  assert.ok(!e?.name && !e?.avatarUrl);
+  assert.match(e?.error ?? "", /#100.*x/);
   reply = { status: 200, body: {} };
-  assert.equal(await mk().fetchProfile!(channel, "U1"), null);
-  assert.equal(await mk("facebook", async () => null).fetchProfile!(channel, "U1"), null);
+  assert.ok(!(await mk().fetchProfile!(channel, "U1"))?.avatarUrl);
+  assert.equal((await mk("facebook", async () => null).fetchProfile!(channel, "U1"))?.error, "Kênh chưa có token");
+});
+
+test("refreshProfile: lấy lại ảnh ngay, kênh không trả ảnh thì báo lý do; người không xem được hội thoại thì từ chối", async () => {
+  registerAdapter(mk());
+  const s = memStore();
+  await ingest(s, "facebook", mk().parse(webhook("m1")));
+  const conv = Object.keys(s.db.conversations)[0];
+  const admin = { uid: "ad", name: "A", role: "admin" as const };
+  reply = { status: 400, body: { error: { message: "Unsupported get request", code: 100 } } };
+  const bad = await refreshProfile(s, conv, admin);
+  assert.equal(bad.ok, false);
+  assert.match(!bad.ok ? bad.error : "", /Unsupported get request/);
+  reply = { status: 200, body: { name: "Nguyễn Văn A", profile_pic: "https://cdn/new.jpg" } };
+  const ok = await refreshProfile(s, conv, admin);
+  assert.deepEqual(ok, { ok: true, name: "Nguyễn Văn A", avatarUrl: "https://cdn/new.jpg" });
+  const stranger = await refreshProfile(s, conv, { uid: "x", name: "X", role: "agent" as const });
+  assert.equal(stranger.ok, false);
 });
 
 test("ingest báo khách chưa có tên cần lấy hồ sơ, và không báo trùng", async () => {

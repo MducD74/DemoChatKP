@@ -86,6 +86,7 @@ export default function SidePanel(p: {
       <div className="kc-ph">
         {p.avatar}
         <div className="kc-phn"><b>{contact.name}</b><span className="kv">{p.kind} · {p.channelName}</span></div>
+        {canAct && <button type="button" className="kc-mini" title="Lấy lại tên và ảnh khách từ kênh" disabled={busy} onClick={() => void run(() => call(`${base}/profile`, "POST"))}>↻ Ảnh</button>}
         {canAct && <button type="button" className="kc-mini" title="Sửa thông tin khách" onClick={() => setEdit(true)}>✎ Sửa</button>}
       </div>
       <div className="kc-lines">

@@ -35,7 +35,8 @@ export interface ChannelAdapter {
   // Bước xác minh GET khi đăng ký webhook (Meta). Trả nội dung phản hồi, hoặc null để trả 403.
   challenge?(params: URLSearchParams): string | null;
   // Lấy tên và ảnh của khách từ kênh. Trả null nếu kênh không cho hoặc lỗi. Không cần thì bỏ.
-  fetchProfile?(channel: Channel, contactExternalId: string): Promise<{ name?: string; avatarUrl?: string } | null>;
+  // error: lý do kênh không trả hồ sơ (để hiện cho quản trị), không có tên và ảnh thì trả null hoặc chỉ error
+  fetchProfile?(channel: Channel, contactExternalId: string): Promise<{ name?: string; avatarUrl?: string; error?: string } | null>;
   // Với kênh có token hết hạn (Zalo OA). Không cần thì bỏ.
   refreshToken?(channel: Channel): Promise<void>;
   // Giờ cho phép trả lời sau tin cuối của khách, null nếu không giới hạn.

@@ -112,18 +112,23 @@ export function createMetaAdapter(cfg: MetaConfig): ChannelAdapter {
     async fetchProfile(channel, contactExternalId) {
       try {
         const token = await cfg.getToken(channel);
-        if (!token) return null;
+        if (!token) return { error: "Kênh chưa có token" };
         const fields = cfg.kind === "instagram" ? "name,username,profile_pic" : "name,profile_pic";
         const res = await doFetch(`https://graph.facebook.com/${version}/${encodeURIComponent(contactExternalId)}?fields=${fields}`, {
           headers: { authorization: `Bearer ${token}` },
         });
-        if (!res.ok) return null;
-        const j = (await res.json().catch(() => ({}))) as { name?: string; username?: string; profile_pic?: string };
+        const j = (await res.json().catch(() => ({}))) as { name?: string; username?: string; profile_pic?: string; error?: { message?: string; code?: number } };
+        if (!res.ok) {
+          // Không ghi mã khách hay nội dung: chỉ lỗi của Meta, để biết vì sao không có tên và ảnh
+          const error = `Meta không trả hồ sơ khách${j.error?.code ? ` (#${j.error.code})` : ` (${res.status})`}: ${j.error?.message ?? "không rõ lý do"}`;
+          console.warn(`[ho-so:${cfg.kind}] ${error}`);
+          return { error };
+        }
         const name = (j.name ?? j.username)?.trim();
-        if (!name && !j.profile_pic) return null;
+        if (!name && !j.profile_pic) return { error: "Meta trả hồ sơ rỗng (không có tên và ảnh)" };
         return { name: name || undefined, avatarUrl: j.profile_pic };
-      } catch {
-        return null;
+      } catch (e) {
+        return { error: `Không gọi được Meta: ${e instanceof Error ? e.message : "lỗi mạng"}` };
       }
     },
     async send({ channel, contactExternalId, text, attachments, messageTag, lastInboundAt, now }: SendInput): Promise<SendResult> {
