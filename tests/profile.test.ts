@@ -85,9 +85,26 @@ test("lấy hồ sơ lỗi: giữ nguyên tên, không thử lại trong 1 giờ
   assert.equal(again.needProfile.length, 0);
 });
 
-test("khách đã có tên từ kênh thì không cần lấy hồ sơ", async () => {
+test("khách đã có tên và ảnh từ kênh thì không cần lấy hồ sơ", async () => {
   const s = memStore();
   const ev = mk().parse(webhook("m1"));
   ev[0].contact.name = "Có Tên";
+  ev[0].contact.avatarUrl = "https://cdn/a.jpg";
+  s.db.contacts["c1:U1"] = { id: "c1:U1", companyId: "co", channelId: "c1", externalId: "U1", name: "Có Tên", avatarUrl: "https://cdn/a.jpg", profileAt: Date.now() };
   assert.equal((await ingest(s, "facebook", ev)).needProfile.length, 0);
+});
+
+test("có tên nhưng chưa có ảnh (tin tải từ lịch sử) thì vẫn lấy hồ sơ để có ảnh", async () => {
+  const s = memStore();
+  const ev = mk().parse(webhook("m1"));
+  ev[0].contact.name = "Có Tên";
+  assert.equal((await ingest(s, "facebook", ev, { history: true })).needProfile.length, 1);
+});
+
+test("ảnh đã lấy quá 3 ngày thì lấy lại khi khách nhắn tiếp (link ảnh của Meta hết hạn)", async () => {
+  const s = memStore();
+  s.db.contacts["c1:U1"] = { id: "c1:U1", companyId: "co", channelId: "c1", externalId: "U1", name: "A", avatarUrl: "https://cdn/old.jpg", profileAt: Date.now() - 4 * 86400_000 };
+  assert.equal((await ingest(s, "facebook", mk().parse(webhook("m1")))).needProfile.length, 1);
+  s.db.contacts["c1:U1"].profileAt = Date.now() - 86400_000;
+  assert.equal((await ingest(s, "facebook", mk().parse(webhook("m2")))).needProfile.length, 0);
 });

@@ -160,7 +160,7 @@ test("tin đến vào kho: khách có tên, tin tự gửi từ điện thoại 
   assert.equal(s.db.messages[`${flow.channelId}:s1`].direction, "out");
   assert.equal(s.db.contacts[`${flow.channelId}:CUST2`].avatarUrl, "https://z/a.png");
   assert.equal(Object.values(s.db.conversations).length, 2); // không có hội thoại nhóm
-  assert.deepEqual(d.rec.userInfo, ["CUST2"]);
+  assert.deepEqual(d.rec.userInfo.sort(), ["CUST1", "CUST2"]); // CUST1 có tên nhưng chưa có ảnh: vẫn lấy hồ sơ để có ảnh, tên giữ nguyên
 });
 
 test("rớt kết nối: bị đăng nhập nơi khác thì dừng và báo; mất mạng thì báo đang nối lại", async () => {

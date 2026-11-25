@@ -37,10 +37,10 @@ type Quick = "all" | "unread" | "none" | "wait" | "need";
 const hue = (s: string) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 45% 45%)`; };
 // Ảnh khách nếu có, lỗi hoặc hết hạn thì quay về chữ cái đầu
 function Av({ name, url, sm }: { name: string; url?: string; sm?: boolean }) {
-  const [bad, setBad] = useState(false);
+  const [bad, setBad] = useState<string | undefined>(); // link đã tải lỗi; có link mới (ảnh làm mới) thì thử lại
   return (
     <span className={`kc-av${sm ? " sm" : ""}`} style={{ background: hue(name) }}>
-      {url && !bad ? <img src={url} alt="" referrerPolicy="no-referrer" onError={() => setBad(true)} /> : initials(name)}
+      {url && bad !== url ? <img src={url} alt="" referrerPolicy="no-referrer" onError={() => setBad(url)} /> : initials(name)}
     </span>
   );
 }

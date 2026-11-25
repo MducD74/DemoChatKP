@@ -3,6 +3,7 @@
 // Chạy lại an toàn: tin đã có thì bỏ qua (mã tin của Graph và của webhook cùng dạng "m_...").
 import { localizeMedia } from "./inboundmedia";
 import { ingest } from "./ingest";
+import { enrichProfiles } from "./profile";
 import type { Store } from "./store";
 import type { Attachment, Channel, InboundEvent } from "./types";
 
@@ -146,6 +147,7 @@ export async function importHistory(store: Store, channel: Channel, opts: Histor
           job.stored += r.stored;
           job.duplicates += r.duplicates;
           if (r.newMedia.length) void localizeMedia(store, r.newMedia).catch(() => undefined); // ảnh của Meta hết hạn: tải về kho ảnh
+          if (r.needProfile.length) await enrichProfiles(store, channel.kind, r.needProfile).catch(() => 0); // ảnh đại diện khách (danh sách hội thoại của Meta chỉ có tên)
         }
         job.conversations++;
       }

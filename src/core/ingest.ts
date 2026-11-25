@@ -19,6 +19,8 @@ export interface IngestResult {
 
 const id = (...p: string[]) => p.join(":");
 const PROFILE_RETRY_MS = 3600_000;
+// Link ảnh đại diện của Meta hết hạn sau vài ngày: lấy lại hồ sơ khi khách nhắn tiếp và lần lấy trước đã quá hạn này
+const PROFILE_REFRESH_MS = 3 * 86400_000;
 
 // history: tin cũ tải về từ kênh. Không chia khách, không mở lại hội thoại đã xong, không tính SLA, không báo chưa đọc.
 // catchUp: khôi phục tin bị lỡ (webhook ngắt). Ghi như tin mới (mở lại hội thoại, chia khách, báo chưa đọc) nhưng KHÔNG đánh thức chatbot,
@@ -75,8 +77,11 @@ function ingestInto(db: DB, channelKind: string, events: InboundEvent[], opts: I
     const ct = db.contacts[contactId];
     // Tin lịch sử có tên khách thật thì bổ sung cho khách chỉ có mã
     if (ev.contact.name && ct.name === ct.externalId) ct.name = ev.contact.name;
-    // Chưa có tên thật thì cần lấy hồ sơ; thử lại tối đa mỗi giờ một lần cho mỗi khách
-    if (!history && ct.name === ct.externalId && !ct.avatarUrl && Date.now() - (ct.profileAt ?? 0) > PROFILE_RETRY_MS && !res.needProfile.some((n) => n.contactId === contactId)) {
+    // Cần lấy hồ sơ khi chưa có tên thật, chưa có ảnh (tin lịch sử chỉ có tên, không có ảnh), hoặc ảnh đã cũ.
+    // Thử lại tối đa mỗi giờ một lần cho mỗi khách.
+    const since = Date.now() - (ct.profileAt ?? 0);
+    const want = ct.name === ct.externalId || !ct.avatarUrl || since > PROFILE_REFRESH_MS;
+    if (want && since > PROFILE_RETRY_MS && !res.needProfile.some((n) => n.contactId === contactId)) {
       res.needProfile.push({ contactId, channelId: ch.id, externalId: ct.externalId });
     }
     const conv = (db.conversations[convId] ??= {

@@ -15,7 +15,7 @@ export async function enrichProfiles(store: Store, kind: string, need: IngestRes
       const ct = db.contacts[n.contactId];
       if (!ct) return;
       ct.profileAt = Date.now(); // ghi cả khi lỗi để không gọi lại liên tục
-      if (p?.name) ct.name = p.name;
+      if (p?.name && ct.name === ct.externalId) ct.name = p.name; // chỉ điền khi chưa có tên thật: không đè tên kênh đã gửi kèm tin
       if (p?.avatarUrl) ct.avatarUrl = p.avatarUrl;
       if (p?.name || p?.avatarUrl) updated++;
     });
